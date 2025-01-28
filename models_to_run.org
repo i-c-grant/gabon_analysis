@@ -1,0 +1,13 @@
+* dev tasks:
+** DONE option to use fixed hse and k_allom
+** TODO include non-multiplied biwf in output
+** DONE remove full config printout
+
+HSE values:
+
+HSE
+1.35
+1.68
+
+Time window:
+one year or full ?

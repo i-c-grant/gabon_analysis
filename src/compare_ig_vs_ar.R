@@ -1,8 +1,11 @@
-library(tidyverse)
-library(sf)
-library(hdf5r)  
-library(purrr)
-library(readr)
+# Suppress package startup messages
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(sf)
+  library(hdf5r)  
+  library(purrr)
+  library(readr)
+})
 
 get_matched_files <- function(h5_dir, gpkg_dir) {
   # Get file lists
@@ -60,8 +63,15 @@ get_matched_files <- function(h5_dir, gpkg_dir) {
             paste(unmatched_gpkg, collapse = ", "))
   }
   
+  # Add status message
+  message("[Status] Found ", nrow(matched), " matching file pairs")
+  if(length(unmatched_gpkg) > 0) {
+    message("[Warning] ", length(unmatched_gpkg), 
+            " GPKG files had no H5 matches")
+  }
+  
   matched %>% 
-    select(h5_path, gpkg_path, h5_key)  # Add h5_key to output
+    select(h5_path, gpkg_path, h5_key)
 }
 
 read_h5_file <- function(path) {
@@ -166,41 +176,53 @@ plot_data <- function(joined_data, key) {
 }
 
 main <- function(h5_dir, gpkg_dir, output_dir) {
+  message("\n=== Starting LVIS Comparison Analysis ===")
+  message("Input directories:")
+  message("- IG Geopackages: ", gpkg_dir)
+  message("- AR HDF5 Files: ", h5_dir)
+  message("- Output Directory: ", output_dir)
+  
   # Create output directory
-  dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
+  if(!dir.exists(output_dir)) {
+    message("Creating output directory: ", output_dir)
+    dir.create(output_dir, recursive = TRUE)
+  }
   
   matched <- get_matched_files(h5_dir, gpkg_dir)
   
-  # Process files sequentially
+  message("\nProcessing ", nrow(matched), " file pairs:")
+  
   results <- matched %>% 
     pmap(function(h5_path, gpkg_path, h5_key) {
-      # Read and process data
+      message("- Processing: ", h5_key)
+      
       h5_data <- read_h5_file(h5_path)
       gpkg_data <- read_gpkg_file(gpkg_path)
       joined <- join_data(h5_data, gpkg_data) %>% 
-        mutate(key = h5_key, .before = 1)  # Add key column
+        mutate(key = h5_key, .before = 1)
       
-      # Generate outputs
       list(
         plot = plot_data(joined, h5_key),
         stats = calculate_stats(joined)
       )
     })
   
-  # Combine statistics and save
+  message("\nSaving results:")
+  message("- Writing combined statistics to CSV")
   stats_df <- map_dfr(results, "stats")
   write_csv(stats_df, file.path(output_dir, "biwf_comparison_stats.csv"))
   
-  # Save plots
+  message("- Saving ", length(results), " plot files")
   walk2(
     map(results, "plot"), matched$h5_key,
-    ~ ggsave(
-      file.path(output_dir, paste0(.y, "_comparison.png")),
-      plot = .x,
-      width = 8, height = 6, dpi = 300
-    )
+    ~ {
+      fpath <- file.path(output_dir, paste0(.y, "_comparison.png"))
+      message("  Saved: ", fpath)
+      ggsave(fpath, plot = .x, width = 8, height = 6, dpi = 300)
+    }
   )
   
+  message("\n=== Analysis Complete ===")
   invisible(list(plots = map(results, "plot"), stats = stats_df))
 }
 

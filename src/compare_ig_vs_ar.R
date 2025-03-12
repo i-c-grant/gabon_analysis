@@ -4,9 +4,6 @@ library(hdf5r)
 library(purrr)
 library(readr)
 
-ig_dir <- "tests/data/IG"
-ar_dir <- "tests/data/AR"
-
 get_matched_files <- function(h5_dir, gpkg_dir) {
   # Get file lists
   h5_files <- list.files(h5_dir,
@@ -168,7 +165,7 @@ plot_data <- function(joined_data, key) {
     )
 }
 
-main <- function(h5_dir, gpkg_dir, output_dir = "outputs") {
+main <- function(h5_dir, gpkg_dir, output_dir) {
   # Create output directory
   dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
   
@@ -206,3 +203,23 @@ main <- function(h5_dir, gpkg_dir, output_dir = "outputs") {
   
   invisible(list(plots = map(results, "plot"), stats = stats_df))
 }
+
+# Add command line argument handling
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) != 3) {
+  stop("
+Usage: Rscript compare_ig_vs_ar.R \\
+  <ig_gpkg_dir> <ar_h5_dir> <output_dir>
+       
+Arguments:
+  1. Path to IG geopackage directory
+  2. Path to AR HDF5 directory  
+  3. Output directory for results
+  ")
+}
+
+main(
+  gpkg_dir = args[1],  # IG geopackages
+  h5_dir = args[2],    # AR HDF5 files
+  output_dir = args[3]
+)

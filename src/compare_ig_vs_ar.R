@@ -3,10 +3,20 @@ library(sf)
 library(rhdf5)
 library(purrr)
 
+ig_dir <- "/home/ian/gabon_lvis_temp"
+ar_dir <- "/data/shared/src/arojas/biomass/biomass-gabon/data/raw/lvis"
+
 get_matched_files <- function(h5_dir, gpkg_dir) {
   # Get file lists and extract matching keys
-  h5_files <- list.files(h5_dir, pattern = "\\.h5$", full.names = TRUE)
-  gpkg_files <- list.files(gpkg_dir, pattern = "\\.gpkg$", full.names = TRUE)
+  h5_files <- list.files(h5_dir,
+                         pattern = "\\.h5$",
+                         full.names = TRUE,
+                         recursive = TRUE)
+
+  gpkg_files <- list.files(gpkg_dir,
+                           pattern = "\\.gpkg$",
+                           full.names = TRUE,
+                           recursive = TRUE)
   
   # Extract final 3 elements from H5 filenames
   h5_keys <- h5_files %>% 

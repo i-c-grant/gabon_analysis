@@ -19,7 +19,7 @@ calculate_file_histogram <- function(h5_path, gpkg_path, breaks) {
   list(ig_counts = hist_ig$counts, ar_counts = hist_ar$counts)
 }
 
-main <- function(h5_dir, gpkg_dir, output_path) {
+main <- function(h5_dir, gpkg_dir, output_dir) {  # Changed output_path to output_dir
   # Create consistent bin breaks for all files
   breaks <- seq(0, 250, length.out = 51)
   
@@ -48,38 +48,56 @@ main <- function(h5_dir, gpkg_dir, output_path) {
     pivot_longer(-mid, names_to = "source", values_to = "count")
   
   # Create plot
-  p <- ggplot(hist_df, aes(x = mid, y = count, color = source)) +
-    geom_line(linewidth = 0.8) +
+  p <- ggplot(hist_df, aes(x = mid, y = count, fill = source)) +
+    geom_col(
+      position = position_dodge(width = 5),  # Side-by-side bars
+      width = 4.5,  # Bar width (slightly less than dodge spacing)
+      alpha = 0.8  # Semi-transparent for overlap visibility
+    ) +
     geom_abline(slope = 0, intercept = 0, color = "gray50") +
-    scale_color_manual(values = c(IG = "#1b9e77", AR = "#7570b3")) +
+    scale_fill_manual(values = c(IG = "#1b9e77", AR = "#7570b3")) +
     labs(
       x = "BIWF Value (≤250)",
       y = "Total Shot Count",
       title = "Aggregated BIWF Distribution Comparison",
-      color = "Data Source"
+      fill = "Data Source"  # Changed from 'color' to 'fill'
     ) +
     theme_classic() +
-    theme(legend.position = c(0.8, 0.8))
+    xlim(c(0, 150)) +
+    theme(
+      legend.position = "inside",
+      legend.position.inside = c(0.8, 0.8)
+    )
+  
+  # Create output directory and paths
+  dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
+  plot_path <- file.path(output_dir, "aggregated_biwf_histogram.png")
+  data_path <- file.path(output_dir, "aggregated_biwf_data.csv")
   
   # Save outputs
-  dir.create(dirname(output_path), showWarnings = FALSE)
-  ggsave(output_path, p, width = 8, height = 6, dpi = 300)
-  write_csv(hist_df, sub("\\.png$", "_data.csv", output_path))
+  ggsave(plot_path, p, width = 8, height = 6, dpi = 300)
+  write_csv(hist_df, data_path)
   
-  message("Saved histogram to: ", output_path)
+  message("Saved histogram to: ", plot_path)
+  message("Saved CSV data to: ", data_path)
 }
 
-# Command line handling
+# Update command line handling and messages
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) != 3) {
   stop("
 Usage: Rscript compare_ig_vs_ar_histogram.R \\
-  <ig_gpkg_dir> <ar_h5_dir> <output.png>
+  <ig_gpkg_dir> <ar_h5_dir> <output_dir>
+
+Arguments:
+  1. Path to IG geopackage directory
+  2. Path to AR HDF5 directory
+  3. Output directory for results
   ")
 }
 
 main(
   gpkg_dir = args[1],
-  h5_dir = args[2],
-  output_path = args[3]
+  h5_dir = args[2], 
+  output_dir = args[3]
 )
